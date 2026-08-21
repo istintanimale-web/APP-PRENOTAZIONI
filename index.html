@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Prenotazioni Ristoranti</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #252542;
+      --primary: #e94560;
+      --primary-hover: #ff6b81;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --text: #eee;
+      --text-muted: #a0a0b8;
+      --border: #2e2e4a;
+      --radius: 14px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; padding-bottom: 100px; line-height: 1.4; }
+    header { background: var(--surface); padding: 16px 18px 12px; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--border); box-shadow: var(--shadow); }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .header-top h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.3px; }
+    .header-top h1 span { color: var(--primary); }
+    .btn-icon { background: var(--surface2); border: none; color: var(--text); width: 40px; height: 40px; border-radius: 12px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .city-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .city-bar::-webkit-scrollbar { display: none; }
+    .current-city-title { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    .current-city-title strong { color: var(--text); font-size: 1.05rem; text-transform: none; letter-spacing: 0; }
+    .city-chip { flex-shrink: 0; background: var(--surface2); border: 2px solid var(--border); color: var(--text); padding: 10px 18px; border-radius: 999px; font-size: 0.95rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .city-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .city-chip.add { background: transparent; border: 2px dashed var(--border); color: var(--text-muted); }
+    main { padding: 16px 14px; max-width: 600px; margin: 0 auto; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+    .booking-card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); }
+    .booking-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+    .booking-name { font-size: 1.15rem; font-weight: 700; flex: 1; cursor: pointer; }
+    .status-badge { font-size: 0.75rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; text-transform: uppercase; cursor: pointer; }
+    .status-badge.da_prenotare { background: rgba(243,156,18,0.2); color: var(--warning); border: 1px solid var(--warning); }
+    .status-badge.prenotato { background: rgba(46,204,113,0.2); color: var(--success); border: 1px solid var(--success); }
+    .booking-meta { display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
+    .booking-notes { font-size: 0.85rem; color: var(--text-muted); background: var(--surface2); padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; }
+    .booking-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { border: none; border-radius: 10px; padding: 10px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: var(--surface2); color: var(--text); }
+    .btn-danger { background: rgba(233,69,96,0.15); color: var(--primary); }
+    .btn-success { background: rgba(46,204,113,0.15); color: var(--success); }
+    .fab { position: fixed; bottom: 24px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 2rem; z-index: 40; }
+    .toolbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; display: flex; gap: 8px; z-index: 30; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+    .toolbar .btn { flex: 1; justify-content: center; padding: 12px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px 18px 30px; max-height: 90dvh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .modal-close { background: var(--surface2); border: none; width: 36px; height: 36px; border-radius: 10px; color: var(--text); font-size: 1.3rem; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 1rem; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; justify-content: center; padding: 14px; }
+    .gen-result { background: var(--surface2); border-radius: 12px; padding: 14px; white-space: pre-wrap; margin-bottom: 16px; }
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: var(--success); color: #111; padding: 12px 20px; border-radius: 12px; font-weight: 600; z-index: 200; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--primary); color: white; }
+    .city-list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-top">
+        <h1>🍝 <span>Prenotazioni</span> <small style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">v6</small></h1>
+        <button class="btn-icon" id="btn-manage-cities">⚙️</button>
+      </div>
+      <div class="city-bar" id="city-bar"></div>
+      <div class="current-city-title" id="current-city-title"></div>
+    </header>
+    <main><div id="bookings-container"></div></main>
+    <button class="fab" id="fab-add">+</button>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-whatsapp">💬 WhatsApp</button>
+      <button class="btn btn-success" id="btn-sync" style="display:none;">🔄 Aggiorna e invia</button>
+    </div>
+  </div>
+  <div class="modal-overlay" id="modal-booking">
+    <div class="modal">
+      <div class="modal-header"><h2 id="modal-booking-title">Nuova prenotazione</h2><button class="modal-close" data-close>×</button></div>
+      <form id="form-booking">
+        <input type="hidden" id="booking-id">
+        <div class="form-group"><label>Nome ristorante</label><input type="text" id="booking-name" required placeholder="Es. Trattoria da Mario"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Data (anche dopo)</label><input type="date" id="booking-date"></div>
+          <div class="form-group"><label>Orario (anche dopo)</label><input type="time" id="booking-time"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Persone</label><input type="number" id="booking-people" min="1" max="30" value="2"></div>
+          <div class="form-group"><label>Stato</label><select id="booking-status"><option value="da_prenotare">Da prenotare</option><option value="prenotato">Prenotato</option></select></div>
+        </div>
+        <div class="form-group"><label>Telefono ristorante</label><input type="tel" id="booking-phone" placeholder="+39"></div>
+        <div class="form-group"><label>Note</label><textarea id="booking-notes"></textarea></div>
+        <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close>Annulla</button><button type="submit" class="btn btn-primary">Salva</button></div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="modal-generator">
+    <div class="modal">
+      <div class="modal-header"><h2>Genera messaggio</h2><button class="modal-close" data-close>×</button></div>
+      <div class="gen-result" id="gen-text"></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="btn-copy-gen">Copia</button><button class="btn btn-success" id="btn-wa-gen">WhatsApp</button></div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="modal-cities">
+    <div class="modal">
+      <div class="modal-header"><h2>Gestisci città</h2><button class="modal-close" data-close>×</button></div>
+      <div id="city-list"></div>
+      <div class="form-group">
+        <label>Codice coppia</label>
+        <div id="cloud-off">
+          <button class="btn btn-primary" id="btn-create-cloud" style="width:100%;margin-bottom:10px;">Crea codice coppia</button>
+          <div style="display:flex;gap:8px;"><input type="text" id="join-code" placeholder="Incolla il codice"><button class="btn btn-secondary" id="btn-join-cloud">Unisciti</button></div>
+        </div>
+        <div id="cloud-on" style="display:none;">
+          <input type="text" id="cloud-code" readonly>
+          <div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-secondary" id="btn-copy-cloud">Copia</button><button class="btn btn-success" id="btn-send-cloud">Invia codice</button></div>
+          <p class="hint" id="cloud-status">Sincronizzato</p>
+          <button class="btn btn-danger" id="btn-leave-cloud" style="margin-top:8px;">Scollega</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Numero WhatsApp</label><div style="display:flex;gap:8px;"><input type="tel" id="partner-phone"><button class="btn btn-secondary" id="btn-save-phone">Salva</button></div></div>
+      <div class="form-group"><label>Nuova città</label><div style="display:flex;gap:8px;"><input type="text" id="new-city-name"><button class="btn btn-primary" id="btn-add-city">Aggiungi</button></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <div class="modal-header"><h2 id="confirm-title">Conferma</h2><button class="modal-close" data-close>×</button></div>
+      <p id="confirm-message"></p>
+      <div class="modal-actions"><button class="btn btn-secondary" data-close>Annulla</button><button class="btn btn-danger" id="confirm-yes">Elimina</button></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const STORAGE_KEY = 'prenotazioni_ristoranti_v1';
+    /*EMBED_START*/var EMBEDDED = null;/*EMBED_END*/
+    let state = { cities: [], currentCityId: null };
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+    function load() {
+      try {
+        if (EMBEDDED && EMBEDDED.cities) {
+          const stamp = String(EMBEDDED.savedAt || '');
+          const applied = localStorage.getItem(STORAGE_KEY + '_applied');
+          if (stamp && stamp !== applied) { state = EMBEDDED; save(); localStorage.setItem(STORAGE_KEY + '_applied', stamp); }
+          else if (localStorage.getItem(STORAGE_KEY)) state = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          else { state = EMBEDDED; save(); }
+        } else {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) state = JSON.parse(raw);
+          else {
+            const defaultId = uid();
+            state = { cities: [{ id: defaultId, name: 'Casa', restaurants: [] }], currentCityId: defaultId };
+            save();
+          }
+        }
+      } catch (e) {
+        const defaultId = uid();
+        state = { cities: [{ id: defaultId, name: 'Casa', restaurants: [] }], currentCityId: defaultId };
+      }
+      if (!state.currentCityId && state.cities.length) state.currentCityId = state.cities[0].id;
+    }
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem('prenotazioni_updatedAt', String(Date.now()));
+      scheduleCloudPush();
+    }
+    function currentCity() { return state.cities.find(c => c.id === state.currentCityId) || null; }
+    function renderCityBar() {
+      const bar = document.getElementById('city-bar');
+      bar.innerHTML = '';
+      let activeChip = null;
+      state.cities.forEach(city => {
+        const chip = document.createElement('button');
+        const isActive = city.id === state.currentCityId;
+        chip.className = 'city-chip' + (isActive ? ' active' : '');
+        chip.textContent = city.name;
+        chip.onclick = () => { state.currentCityId = city.id; save(); render(); };
+        bar.appendChild(chip);
+        if (isActive) activeChip = chip;
+      });
+      const addChip = document.createElement('button');
+      addChip.className = 'city-chip add';
+      addChip.textContent = '+ Città';
+      addChip.onclick = () => openModal('modal-cities');
+      bar.appendChild(addChip);
+      const title = document.getElementById('current-city-title');
+      const city = currentCity();
+      title.innerHTML = city ? 'Pagina selezionata: <strong>' + escapeHtml(city.name) + '</strong>' : 'Crea una città';
+      if (activeChip) setTimeout(() => activeChip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }), 50);
+    }
+    function renderBookings() {
+      const container = document.getElementById('bookings-container');
+      const city = currentCity();
+      if (!city) { container.innerHTML = '<div class="empty-state"><p>Aggiungi una città</p></div>'; return; }
+      if (!city.restaurants.length) {
+        container.innerHTML = '<div class="empty-state"><p>Nessuna prenotazione per <strong>' + escapeHtml(city.name) + '</strong></p><button class="btn btn-primary" onclick="document.getElementById(\'fab-add\').click()">+ Aggiungi</button></div>';
+        return;
+      }
+      const sorted = [...city.restaurants].sort((a, b) => {
+        const aHas = !!a.date, bHas = !!b.date;
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        if (!aHas && !bHas) return (a.name || '').localeCompare(b.name || '', 'it');
+        return (a.date + ' ' + (a.time || '99:99')).localeCompare(b.date + ' ' + (b.time || '99:99'));
+      });
+      container.innerHTML = sorted.map(r => {
+        const dateStr = formatDate(r.date);
+        const statusLabel = r.status === 'prenotato' ? 'Prenotato' : 'Da prenotare';
+        return '<div class="booking-card"><div class="booking-header"><div class="booking-name" onclick="editBooking(\'' + r.id + '\')">' + escapeHtml(r.name) + '</div><div class="status-badge ' + r.status + '" onclick="toggleStatus(\'' + r.id + '\')">' + statusLabel + '</div></div><div class="booking-meta"><span>📅 ' + (r.date ? dateStr : 'data da definire') + '</span><span>🕐 ' + (r.time || 'orario da definire') + '</span><span>👥 ' + (r.people || 2) + '</span>' + (r.phone ? '<span>📞 ' + escapeHtml(r.phone) + '</span>' : '') + '</div>' + (r.notes ? '<div class="booking-notes">' + escapeHtml(r.notes) + '</div>' : '') + '<div class="booking-actions"><button class="btn btn-primary" onclick="openGenerator(\'' + r.id + '\')">Genera messaggio</button><button class="btn btn-secondary" onclick="editBooking(\'' + r.id + '\')">✏️</button><button class="btn btn-danger" onclick="askDeleteBooking(\'' + r.id + '\')">🗑️</button></div></div>';
+      }).join('');
+    }
+    function renderCityList() {
+      document.getElementById('city-list').innerHTML = state.cities.map(c => '<div class="city-list-item"><span class="name">' + escapeHtml(c.name) + ' (' + c.restaurants.length + ')</span><div style="display:flex;gap:6px;"><button class="btn btn-secondary" onclick="renameCity(\'' + c.id + '\')">✏️</button><button class="btn btn-danger" onclick="askDeleteCity(\'' + c.id + '\')">🗑️</button></div></div>').join('');
+    }
+    function render() { renderCityBar(); renderBookings(); }
+    function escapeHtml(str) { if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function formatDate(iso) { if (!iso) return '—'; const p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function showToast(msg, isError) { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast show' + (isError ? ' error' : ''); setTimeout(() => t.classList.remove('show'), 2500); }
+    function openModal(id) { document.getElementById(id).classList.add('open'); if (id === 'modal-cities') { renderCityList(); document.getElementById('partner-phone').value = getPartnerPhone(); refreshCloudUI(); } }
+    function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); }
+    function openAddBooking() {
+      document.getElementById('modal-booking-title').textContent = 'Nuova prenotazione';
+      document.getElementById('booking-id').value = '';
+      document.getElementById('booking-name').value = '';
+      document.getElementById('booking-date').value = '';
+      document.getElementById('booking-time').value = '';
+      document.getElementById('booking-people').value = '2';
+      document.getElementById('booking-status').value = 'da_prenotare';
+      document.getElementById('booking-phone').value = '';
+      document.getElementById('booking-notes').value = '';
+      openModal('modal-booking');
+    }
+    function editBooking(id) {
+      const r = currentCity().restaurants.find(x => x.id === id); if (!r) return;
+      document.getElementById('modal-booking-title').textContent = 'Modifica prenotazione';
+      document.getElementById('booking-id').value = r.id;
+      document.getElementById('booking-name').value = r.name;
+      document.getElementById('booking-date').value = r.date || '';
+      document.getElementById('booking-time').value = r.time || '';
+      document.getElementById('booking-people').value = r.people || 2;
+      document.getElementById('booking-status').value = r.status;
+      document.getElementById('booking-phone').value = r.phone || '';
+      document.getElementById('booking-notes').value = r.notes || '';
+      openModal('modal-booking');
+    }
+    document.getElementById('form-booking').onsubmit = function(e) {
+      e.preventDefault();
+      const city = currentCity(); if (!city) return;
+      const id = document.getElementById('booking-id').value;
+      const data = { name: document.getElementById('booking-name').value.trim(), date: document.getElementById('booking-date').value, time: document.getElementById('booking-time').value, people: parseInt(document.getElementById('booking-people').value) || 2, status: document.getElementById('booking-status').value, phone: document.getElementById('booking-phone').value.trim(), notes: document.getElementById('booking-notes').value.trim() };
+      if (!data.name) { showToast('Inserisci il nome', true); return; }
+      if (id) { const idx = city.restaurants.findIndex(x => x.id === id); if (idx >= 0) city.restaurants[idx] = Object.assign({}, city.restaurants[idx], data); }
+      else city.restaurants.push(Object.assign({ id: uid() }, data));
+      save(); closeModals(); render(); showToast(id ? 'Modificato' : 'Aggiunto');
+    };
+    function toggleStatus(id) { const r = currentCity().restaurants.find(x => x.id === id); if (!r) return; r.status = r.status === 'prenotato' ? 'da_prenotare' : 'prenotato'; save(); render(); }
+    let pendingDelete = null;
+    function askDeleteBooking(id) { pendingDelete = { type: 'booking', id }; document.getElementById('confirm-title').textContent = 'Elimina'; document.getElementById('confirm-message').textContent = 'Eliminare questa prenotazione?'; openModal('modal-confirm'); }
+    function askDeleteCity(id) { if (state.cities.length <= 1) { showToast('Deve restare una città', true); return; } pendingDelete = { type: 'city', id }; document.getElementById('confirm-title').textContent = 'Elimina città'; document.getElementById('confirm-message').textContent = 'Eliminare la città?'; openModal('modal-confirm'); }
+    document.getElementById('confirm-yes').onclick = function() {
+      if (!pendingDelete) return;
+      if (pendingDelete.type === 'booking') currentCity().restaurants = currentCity().restaurants.filter(r => r.id !== pendingDelete.id);
+      else { state.cities = state.cities.filter(c => c.id !== pendingDelete.id); if (state.currentCityId === pendingDelete.id) state.currentCityId = state.cities[0] ? state.cities[0].id : null; }
+      save(); pendingDelete = null; closeModals(); render();
+    };
+    let currentGenBooking = null;
+    function openGenerator(id) {
+      const r = currentCity().restaurants.find(x => x.id === id); if (!r) return;
+      currentGenBooking = r;
+      const dateStr = r.date ? formatDate(r.date) : '[data]';
+      const timeStr = r.time || '[orario]';
+      const people = r.people || 2;
+      let text = 'Buonasera,\nvorrei prenotare un tavolo per ' + people + ' ' + (people === 1 ? 'persona' : 'persone') + ' per il giorno ' + dateStr + ' alle ore ' + timeStr + '.\n';
+      if (r.notes) text += '\nNote: ' + r.notes + '\n';
+      text += '\nGrazie mille!\nA presto.';
+      document.getElementById('gen-text').textContent = text;
+      openModal('modal-generator');
+    }
+    document.getElementById('btn-copy-gen').onclick = async function() { try { await navigator.clipboard.writeText(document.getElementById('gen-text').textContent); showToast('Copiato'); } catch(e) {} };
+    document.getElementById('btn-wa-gen').onclick = function() { const text = document.getElementById('gen-text').textContent; const phone = (currentGenBooking && currentGenBooking.phone || '').replace(/\D/g,''); window.open('https://wa.me/' + (phone || '') + '?text=' + encodeURIComponent(text), '_blank'); };
+    document.getElementById('btn-add-city').onclick = function() {
+      const name = document.getElementById('new-city-name').value.trim(); if (!name) return;
+      const id = uid(); state.cities.push({ id, name, restaurants: [] }); state.currentCityId = id;
+      document.getElementById('new-city-name').value = ''; save(); closeModals(); render();
+    };
+    function renameCity(id) { const city = state.cities.find(c => c.id === id); if (!city) return; const n = prompt('Nuovo nome', city.name); if (n && n.trim()) { city.name = n.trim(); save(); renderCityList(); render(); } }
+    function getShareText() { return 'Prenotazioni aggiornate.'; }
+    function buildUpdatedAppFile() {
+      const payload = Object.assign({}, state, { savedAt: Date.now() });
+      const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace(/\/\*EMBED_START\*\/[\s\S]*?\/\*EMBED_END\*\//, '/*EMBED_START*/var EMBEDDED = ' + JSON.stringify(payload) + ';/*EMBED_END*/');
+      return new File([html], 'prenotazioni.html', { type: 'text/html' });
+    }
+    async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch(e) { return false; } }
+    const PHONE_KEY = 'prenotazioni_whatsapp_dest';
+    function normalizePhone(raw) { let n = String(raw||'').replace(/\D/g,''); if (!n) return ''; if (n.startsWith('00')) n = n.slice(2); if (n.length === 10 && n.startsWith('3')) n = '39'+n; return n; }
+    function getPartnerPhone() { return localStorage.getItem(PHONE_KEY) || ''; }
+    function setPartnerPhone(raw) { const n = normalizePhone(raw); if (!n) return ''; localStorage.setItem(PHONE_KEY, n); return n; }
+    async function sendToPartner() {
+      const file = buildUpdatedAppFile();
+      try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ title: 'Prenotazioni', text: getShareText(), files: [file] }); return; } } catch(e) { if (e.name === 'AbortError') return; }
+      const url = URL.createObjectURL(file); const a = document.createElement('a'); a.href = url; a.download = 'prenotazioni.html'; a.click(); URL.revokeObjectURL(url);
+      const phone = getPartnerPhone(); if (phone) window.location.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(getShareText());
+    }
+    document.getElementById('btn-whatsapp').onclick = sendToPartner;
+    document.getElementById('btn-save-phone').onclick = function() { const n = setPartnerPhone(document.getElementById('partner-phone').value); if (n) { document.getElementById('partner-phone').value = n; showToast('Numero salvato'); } };
+    document.getElementById('fab-add').onclick = openAddBooking;
+    document.getElementById('btn-manage-cities').onclick = function() { openModal('modal-cities'); };
+    document.getElementById('btn-sync').onclick = async function() { if (!getCloudId()) { openModal('modal-cities'); return; } localStorage.setItem('prenotazioni_updatedAt', String(Date.now())); await cloudPush(); await cloudPull(); showToast('Aggiornato e inviato'); };
+    document.querySelectorAll('[data-close]').forEach(btn => { btn.onclick = closeModals; });
+    document.querySelectorAll('.modal-overlay').forEach(overlay => { overlay.addEventListener('click', e => { if (e.target === overlay) closeModals(); }); });
+    const CLOUD_API = 'https://api.restful-api.dev/objects';
+    const CLOUD_KEY = 'prenotazioni_cloud_id';
+    let cloudTimer = null, pulling = false;
+    function getCloudId() { return localStorage.getItem(CLOUD_KEY) || ''; }
+    function setCloudId(id) { if (id) localStorage.setItem(CLOUD_KEY, id); else localStorage.removeItem(CLOUD_KEY); refreshCloudUI(); }
+    function refreshCloudUI() {
+      const id = getCloudId(); const on = document.getElementById('cloud-on'); const off = document.getElementById('cloud-off'); const syncBtn = document.getElementById('btn-sync');
+      if (!on || !off) return;
+      if (id) { off.style.display = 'none'; on.style.display = 'block'; document.getElementById('cloud-code').value = id; if (syncBtn) syncBtn.style.display = 'inline-flex'; }
+      else { on.style.display = 'none'; off.style.display = 'block'; if (syncBtn) syncBtn.style.display = 'none'; }
+    }
+    function setCloudStatus(msg) { const el = document.getElementById('cloud-status'); if (el) el.textContent = msg; }
+    function payloadForCloud() { return { cities: state.cities, updatedAt: Number(localStorage.getItem('prenotazioni_updatedAt') || Date.now()) }; }
+    function applyRemoteCities(cities, stamp) {
+      const keep = state.currentCityId; state.cities = cities;
+      if (!state.cities.find(c => c.id === keep)) state.currentCityId = state.cities[0] ? state.cities[0].id : null;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (stamp) localStorage.setItem('prenotazioni_updatedAt', String(stamp));
+      render();
+    }
+    async function createCloud() {
+      try {
+        const res = await fetch(CLOUD_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'prenotazioni', data: payloadForCloud() }) });
+        const json = await res.json(); if (!json.id) throw new Error('no id'); setCloudId(json.id); showToast('Codice creato');
+      } catch (e) { showToast('Impossibile creare il codice', true); }
+    }
+    async function joinCloud(id) {
+      id = String(id || '').trim(); if (!id) return;
+      try {
+        const res = await fetch(CLOUD_API + '/' + encodeURIComponent(id));
+        const json = await res.json(); const data = json.data || json; if (!data.cities) throw new Error('bad');
+        applyRemoteCities(data.cities, data.updatedAt); setCloudId(id); showToast('Collegati');
+      } catch (e) { showToast('Codice non valido', true); }
+    }
+    async function cloudPush() {
+      const id = getCloudId(); if (!id) return;
+      try {
+        await fetch(CLOUD_API + '/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'prenotazioni', data: payloadForCloud() }) });
+        setCloudStatus('Sincronizzato');
+      } catch (e) { setCloudStatus('Non inviato'); }
+    }
+    function scheduleCloudPush() { if (!getCloudId()) return; clearTimeout(cloudTimer); cloudTimer = setTimeout(cloudPush, 600); }
+    async function cloudPull() {
+      const id = getCloudId(); if (!id || pulling) return; pulling = true;
+      try {
+        const res = await fetch(CLOUD_API + '/' + encodeURIComponent(id));
+        const json = await res.json(); const data = json.data || json; if (!data.cities) return;
+        const localAt = Number(localStorage.getItem('prenotazioni_updatedAt') || 0);
+        const remoteAt = Number(data.updatedAt || 0);
+        if (remoteAt > localAt) applyRemoteCities(data.cities, remoteAt);
+      } catch (e) {}
+      pulling = false;
+    }
+    document.getElementById('btn-create-cloud').onclick = createCloud;
+    document.getElementById('btn-join-cloud').onclick = function() { joinCloud(document.getElementById('join-code').value); };
+    document.getElementById('btn-copy-cloud').onclick = async function() { await copyText(getCloudId()); };
+    document.getElementById('btn-send-cloud').onclick = function() { const text = 'Codice coppia:\n' + getCloudId(); const phone = getPartnerPhone(); window.location.href = phone ? 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text) : 'https://wa.me/?text=' + encodeURIComponent(text); };
+    document.getElementById('btn-leave-cloud').onclick = function() { setCloudId(''); };
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') cloudPull(); });
+    setInterval(cloudPull, 12000);
+    load(); render(); refreshCloudUI(); cloudPull();
+  </script>
+</body>
+</html>
