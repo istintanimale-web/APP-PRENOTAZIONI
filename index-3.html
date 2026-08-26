@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Prenotazioni Ristoranti</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #252542;
+      --primary: #e94560;
+      --primary-hover: #ff6b81;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --text: #eee;
+      --text-muted: #a0a0b8;
+      --border: #2e2e4a;
+      --radius: 14px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding-bottom: 100px;
+      line-height: 1.4;
+    }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      padding: 16px 18px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .header-top h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .header-top h1 span { color: var(--primary); }
+
+    .btn-icon {
+      background: var(--surface2);
+      border: none;
+      color: var(--text);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* City selector */
+    .city-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .city-bar::-webkit-scrollbar { display: none; }
+
+    .current-city-title {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .current-city-title strong {
+      color: var(--text);
+      font-size: 1.05rem;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .city-chip {
+      flex-shrink: 0;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      color: var(--text);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .city-chip.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .city-chip.add {
+      background: transparent;
+      border: 2px dashed var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Main content */
+    main {
+      padding: 16px 14px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 1rem; margin-bottom: 20px; }
+
+    /* Booking cards */
+    .booking-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      position: relative;
+      transition: transform 0.15s;
+    }
+    .booking-card:active { transform: scale(0.98); }
+
+    .booking-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .booking-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      flex: 1;
+      cursor: pointer;
+    }
+    .booking-name:active { color: var(--primary); }
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .status-badge.da_prenotare {
+      background: rgba(243, 156, 18, 0.2);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+    .status-badge.prenotato {
+      background: rgba(46, 204, 113, 0.2);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .booking-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .booking-meta span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .booking-notes {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+    }
+
+    .booking-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:active { background: var(--primary-hover); }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+    }
+    .btn-danger {
+      background: rgba(233, 69, 96, 0.15);
+      color: var(--primary);
+    }
+    .btn-success {
+      background: rgba(46, 204, 113, 0.15);
+      color: var(--success);
+    }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      font-size: 2rem;
+      box-shadow: 0 6px 24px rgba(233, 69, 96, 0.45);
+      cursor: pointer;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .fab:active { transform: scale(0.92); }
+
+    /* Bottom toolbar for share */
+    .toolbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      gap: 8px;
+      z-index: 30;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    .toolbar .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 12px;
+      font-size: 0.9rem;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      width: 100%;
+      max-width: 500px;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 18px 30px;
+      max-height: 90dvh;
+      overflow-y: auto;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .modal-header h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .modal-close {
+      background: var(--surface2);
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1.3rem;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--primary);
+    }
+    .form-group textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+    .form-row .form-group { flex: 1; }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 14px;
+      font-size: 1rem;
+    }
+
+    /* Generator result */
+    .gen-result {
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      line-height: 1.5;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: var(--success);
+      color: #111;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      z-index: 200;
+      transition: transform 0.3s ease;
+      box-shadow: var(--shadow);
+      max-width: 90%;
+      text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--primary); color: white; }
+
+    /* City manage modal list */
+    .city-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .city-list-item:last-child { border-bottom: none; }
+    .city-list-item .name { font-weight: 600; }
+
+    /* Small helpers */
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-top">
+        <h1>🍝 <span>Prenotazioni</span> <small style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">v11</small></h1>
+        <button class="btn-icon" id="btn-manage-cities" title="Gestisci città">⚙️</button>
+      </div>
+      <div class="city-bar" id="city-bar"></div>
+      <div class="current-city-title" id="current-city-title"></div>
+    </header>
+
+    <main>
+      <div id="bookings-container"></div>
+    </main>
+
+    <button class="fab" id="fab-add" title="Aggiungi prenotazione">+</button>
+
+    <div class="toolbar">
+      <button class="btn btn-secondary" id="btn-jpeg">📸 JPEG</button>
+      <button class="btn btn-primary" id="btn-whatsapp">💬 Invia</button>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Booking -->
+  <div class="modal-overlay" id="modal-booking">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-booking-title">Nuova prenotazione</h2>
+        <button class="modal-close" data-close>×</button>
+      </div>
+      <form id="form-booking">
+        <input type="hidden" id="booking-id">
+        <div class="form-group">
+          <label>Nome ristorante</label>
+          <input type="text" id="booking-name" required placeholder="Es. Trattoria da Mario" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data (anche dopo)</label>
+            <input type="date" id="booking-date">
+          </div>
+          <div class="form-group">
+            <label>Orario (anche dopo)</label>
+            <input type="time" id="booking-time">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Persone</label>
+            <input type="number" id="booking-people" min="1" max="30" value="2">
+          </div>
+          <div class="form-group">
+            <label>Stato</label>
+            <select id="booking-status">
+              <option value="da_prenotare">Da prenotare</option>
+              <option value="prenotato">Prenotato</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Telefono ristorante (opzionale)</label>
+          <input type="tel" id="booking-phone" placeholder="+39 06 1234567">
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <textarea id="booking-notes" placeholder="Allergie, preferenze, ecc."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close>Annulla</button>
+          <button type="submit" class="btn btn-primary">Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Generator -->
+  <div class="modal-overlay" id="modal-generator">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Genera messaggio</h2>
+        <button class="modal-close" data-close>×</button>
+      </div>
+      <div class="gen-result" id="gen-text"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-copy-gen">📋 Copia</button>
+        <button class="btn btn-success" id="btn-wa-gen">💬 WhatsApp</button>
+      </div>
+      <p class="hint" style="margin-top:12px; text-align:center;">Il messaggio è pronto da inviare al ristorante</p>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Cities -->
+  <div class="modal-overlay" id="modal-cities">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Gestisci città / pagine</h2>
+        <button class="modal-close" data-close>×</button>
+      </div>
+      <div id="city-list"></div>
+      <div class="form-group" style="margin-top:8px;">
+        <label>Numero WhatsApp di lei/lui</label>
+        <div style="display:flex; gap:8px;">
+          <input type="tel" id="partner-phone" placeholder="Es. 333 1234567">
+          <button class="btn btn-secondary" id="btn-save-phone">Salva</button>
+        </div>
+        <p class="hint">Una volta. Poi Invia apre subito la sua chat con la lista.</p>
+      </div>
+      <div class="form-group" style="margin-top:16px;">
+        <label>Nuova città / vacanza</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="new-city-name" placeholder="Es. Roma, Firenze, Vacanza Sicilia...">
+          <button class="btn btn-primary" id="btn-add-city">Aggiungi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm delete -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal" style="padding-bottom:24px;">
+      <div class="modal-header">
+        <h2 id="confirm-title">Conferma</h2>
+        <button class="modal-close" data-close>×</button>
+      </div>
+      <p id="confirm-message" style="margin-bottom:20px; color:var(--text-muted);"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close>Annulla</button>
+        <button class="btn btn-danger" id="confirm-yes">Elimina</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============ DATA & STATE ============
+    const STORAGE_KEY = 'prenotazioni_ristoranti_v1';
+    /*EMBED_START*/var EMBEDDED = {"cities":[{"id":"mt3phbfoyosw83","name":"Formentera","restaurants":[{"id":"mt3pinewf185ny","name":"Vogamari","date":"2026-09-03","time":"21:00","people":2,"status":"prenotato","phone":"","notes":""},{"id":"mt3piv80glogin","name":"Bocasalina","date":"2026-09-04","time":"20:30","people":2,"status":"prenotato","phone":"","notes":""},{"id":"mt4kj0y0z9wqxd","name":"Sol Cala Saona","date":"2026-09-02","time":"21:30","people":2,"status":"da_prenotare","phone":"","notes":""}]},{"id":"mt3phkqwbc33tz","name":"Ibiza","restaurants":[{"id":"mt3pjexaqolc3i","name":"Es Boldado","date":"2026-09-08","time":"21:00","people":2,"status":"prenotato","phone":"","notes":"Paella top vista sul mare bellissimo. Prenotato dal sito su Valerio.javelin che si avvale di thefork"},{"id":"mt4m63x6p2164p","name":"Kasbah","date":"2026-09-07","time":"21:00","people":2,"status":"prenotato","phone":"","notes":"Tramonto vicino hotel pesce e carne. Prenotato da sito su email valerio.javelin"},{"id":"mt599odkzspwdf","name":"Es virot","date":"2026-09-05","time":"21:00","people":2,"status":"da_prenotare","phone":"","notes":"Vicino hotel cucina top e paelle top. Scritto su Instagram in attesa di conferma"},{"id":"mt59nmrqywn9rv","name":"Can Tina","date":"2026-09-06","time":"21:00","people":2,"status":"prenotato","phone":"","notes":"Paella mostruosa in centro molto famoso. Prenotazione su Google su valerio.javelin"}]}],"currentCityId":"mt3phbfoyosw83","savedAt":1787705754689};/*EMBED_END*/
+
+    let state = {
+      cities: [],
+      currentCityId: null
+    };
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function load() {
+      try {
+        if (EMBEDDED && EMBEDDED.cities) {
+          const stamp = String(EMBEDDED.savedAt || '');
+          const applied = localStorage.getItem(STORAGE_KEY + '_applied');
+          if (stamp && stamp !== applied) {
+            state = EMBEDDED;
+            save();
+            localStorage.setItem(STORAGE_KEY + '_applied', stamp);
+          } else if (localStorage.getItem(STORAGE_KEY)) {
+            state = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          } else {
+            state = EMBEDDED;
+            save();
+          }
+        } else {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            state = JSON.parse(raw);
+          } else {
+            const defaultId = uid();
+            state = {
+              cities: [{ id: defaultId, name: 'Casa', restaurants: [] }],
+              currentCityId: defaultId
+            };
+            save();
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        const defaultId = uid();
+        state = {
+          cities: [{ id: defaultId, name: 'Casa', restaurants: [] }],
+          currentCityId: defaultId
+        };
+      }
+      if (!state.currentCityId && state.cities.length) {
+        state.currentCityId = state.cities[0].id;
+      }
+      applyHashData();
+    }
+
+    function applyHashData() {
+      try {
+        const h = (location.hash || '').replace(/^#/, '');
+        if (h.indexOf('d=') !== 0) return;
+        const raw = decodeURIComponent(h.slice(2));
+        const data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+        if (!data || !data.cities) return;
+        state = data;
+        if (!state.currentCityId && state.cities.length) state.currentCityId = state.cities[0].id;
+        save();
+        history.replaceState(null, '', location.pathname);
+      } catch (e) {}
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function currentCity() {
+      return state.cities.find(c => c.id === state.currentCityId) || null;
+    }
+
+    // ============ UI RENDER ============
+    function renderCityBar() {
+      const bar = document.getElementById('city-bar');
+      bar.innerHTML = '';
+      let activeChip = null;
+      state.cities.forEach(city => {
+        const chip = document.createElement('button');
+        const isActive = city.id === state.currentCityId;
+        chip.className = 'city-chip' + (isActive ? ' active' : '');
+        chip.textContent = city.name;
+        chip.onclick = () => {
+          state.currentCityId = city.id;
+          save();
+          render();
+        };
+        bar.appendChild(chip);
+        if (isActive) activeChip = chip;
+      });
+      const addChip = document.createElement('button');
+      addChip.className = 'city-chip add';
+      addChip.textContent = '+ Città';
+      addChip.onclick = () => openModal('modal-cities');
+      bar.appendChild(addChip);
+
+      const title = document.getElementById('current-city-title');
+      const city = currentCity();
+      title.innerHTML = city
+        ? `Pagina selezionata: <strong>${escapeHtml(city.name)}</strong>`
+        : 'Crea una città per iniziare';
+
+      if (activeChip) {
+        setTimeout(() => activeChip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }), 50);
+      }
+    }
+
+    function renderBookings() {
+      const container = document.getElementById('bookings-container');
+      const city = currentCity();
+      if (!city) {
+        container.innerHTML = '<div class="empty-state"><div class="emoji">🏙️</div><p>Aggiungi una città per iniziare</p></div>';
+        return;
+      }
+
+      if (city.restaurants.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="emoji">🍽️</div>
+            <p>Nessuna prenotazione per <strong>${escapeHtml(city.name)}</strong></p>
+            <button class="btn btn-primary" onclick="document.getElementById('fab-add').click()">+ Aggiungi la prima</button>
+          </div>`;
+        return;
+      }
+
+      // Con data: ordine cronologico. Senza data: in fondo, in attesa
+      const sorted = [...city.restaurants].sort((a, b) => {
+        const aHas = !!a.date;
+        const bHas = !!b.date;
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        if (!aHas && !bHas) return (a.name || '').localeCompare(b.name || '', 'it');
+        const aKey = `${a.date} ${a.time || '99:99'}`;
+        const bKey = `${b.date} ${b.time || '99:99'}`;
+        return aKey.localeCompare(bKey);
+      });
+
+      container.innerHTML = sorted.map(r => {
+        const dateStr = formatDate(r.date);
+        const statusLabel = r.status === 'prenotato' ? 'Prenotato' : 'Da prenotare';
+        return `
+          <div class="booking-card" data-id="${r.id}">
+            <div class="booking-header">
+              <div class="booking-name" onclick="editBooking('${r.id}')">${escapeHtml(r.name)}</div>
+              <div class="status-badge ${r.status}" onclick="toggleStatus('${r.id}')">${statusLabel}</div>
+            </div>
+            <div class="booking-meta">
+              <span>📅 ${r.date ? dateStr : 'data da definire'}</span>
+              <span>🕐 ${r.time || 'orario da definire'}</span>
+              <span>👥 ${r.people || 2}</span>
+              ${r.phone ? `<span>📞 ${escapeHtml(r.phone)}</span>` : ''}
+            </div>
+            ${r.notes ? `<div class="booking-notes">${escapeHtml(r.notes)}</div>` : ''}
+            <div class="booking-actions">
+              <button class="btn btn-primary" onclick="openGenerator('${r.id}')">✨ Genera messaggio</button>
+              <button class="btn btn-secondary" onclick="editBooking('${r.id}')">✏️</button>
+              <button class="btn btn-danger" onclick="askDeleteBooking('${r.id}')">🗑️</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderCityList() {
+      const list = document.getElementById('city-list');
+      list.innerHTML = state.cities.map(c => `
+        <div class="city-list-item">
+          <span class="name">${escapeHtml(c.name)} <small style="color:var(--text-muted)">(${c.restaurants.length})</small></span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-secondary" style="padding:6px 10px;" onclick="renameCity('${c.id}')">✏️</button>
+            <button class="btn btn-danger" style="padding:6px 10px;" onclick="askDeleteCity('${c.id}')">🗑️</button>
+          </div>
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);">Nessuna città</p>';
+    }
+
+    function render() {
+      renderCityBar();
+      renderBookings();
+    }
+
+    // ============ HELPERS ============
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+      if (id === 'modal-cities') {
+        renderCityList();
+        document.getElementById('partner-phone').value = getPartnerPhone();
+      }
+    }
+
+    function closeModals() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    }
+
+    // ============ BOOKING CRUD ============
+    function openAddBooking() {
+      document.getElementById('modal-booking-title').textContent = 'Nuova prenotazione';
+      document.getElementById('booking-id').value = '';
+      document.getElementById('booking-name').value = '';
+      document.getElementById('booking-date').value = '';
+      document.getElementById('booking-time').value = '';
+      document.getElementById('booking-people').value = '2';
+      document.getElementById('booking-status').value = 'da_prenotare';
+      document.getElementById('booking-phone').value = '';
+      document.getElementById('booking-notes').value = '';
+      openModal('modal-booking');
+      setTimeout(() => document.getElementById('booking-name').focus(), 300);
+    }
+
+    function editBooking(id) {
+      const city = currentCity();
+      const r = city.restaurants.find(x => x.id === id);
+      if (!r) return;
+      document.getElementById('modal-booking-title').textContent = 'Modifica prenotazione';
+      document.getElementById('booking-id').value = r.id;
+      document.getElementById('booking-name').value = r.name;
+      document.getElementById('booking-date').value = r.date;
+      document.getElementById('booking-time').value = r.time;
+      document.getElementById('booking-people').value = r.people || 2;
+      document.getElementById('booking-status').value = r.status;
+      document.getElementById('booking-phone').value = r.phone || '';
+      document.getElementById('booking-notes').value = r.notes || '';
+      openModal('modal-booking');
+    }
+
+    document.getElementById('form-booking').onsubmit = function(e) {
+      e.preventDefault();
+      const city = currentCity();
+      if (!city) return;
+
+      const id = document.getElementById('booking-id').value;
+      const data = {
+        name: document.getElementById('booking-name').value.trim(),
+        date: document.getElementById('booking-date').value,
+        time: document.getElementById('booking-time').value,
+        people: parseInt(document.getElementById('booking-people').value) || 2,
+        status: document.getElementById('booking-status').value,
+        phone: document.getElementById('booking-phone').value.trim(),
+        notes: document.getElementById('booking-notes').value.trim()
+      };
+
+      if (!data.name) {
+        showToast('Inserisci almeno il nome del ristorante', true);
+        return;
+      }
+
+      if (id) {
+        const idx = city.restaurants.findIndex(x => x.id === id);
+        if (idx >= 0) city.restaurants[idx] = { ...city.restaurants[idx], ...data };
+      } else {
+        city.restaurants.push({ id: uid(), ...data });
+      }
+      save();
+      closeModals();
+      render();
+      showToast(id ? 'Modificato!' : 'Aggiunto!');
+    };
+
+    function toggleStatus(id) {
+      const city = currentCity();
+      const r = city.restaurants.find(x => x.id === id);
+      if (!r) return;
+      r.status = r.status === 'prenotato' ? 'da_prenotare' : 'prenotato';
+      save();
+      render();
+      showToast(r.status === 'prenotato' ? 'Segnato come Prenotato ✓' : 'Segnato da prenotare');
+    }
+
+    let pendingDelete = null;
+    function askDeleteBooking(id) {
+      pendingDelete = { type: 'booking', id };
+      document.getElementById('confirm-title').textContent = 'Elimina prenotazione';
+      document.getElementById('confirm-message').textContent = 'Sei sicuro di voler eliminare questa prenotazione?';
+      openModal('modal-confirm');
+    }
+
+    function askDeleteCity(id) {
+      if (state.cities.length <= 1) {
+        showToast('Deve rimanere almeno una città', true);
+        return;
+      }
+      pendingDelete = { type: 'city', id };
+      const city = state.cities.find(c => c.id === id);
+      document.getElementById('confirm-title').textContent = 'Elimina città';
+      document.getElementById('confirm-message').textContent = `Eliminare "${city.name}" e tutte le sue prenotazioni?`;
+      openModal('modal-confirm');
+    }
+
+    document.getElementById('confirm-yes').onclick = function() {
+      if (!pendingDelete) return;
+      if (pendingDelete.type === 'booking') {
+        const city = currentCity();
+        city.restaurants = city.restaurants.filter(r => r.id !== pendingDelete.id);
+        save();
+        showToast('Eliminato');
+      } else if (pendingDelete.type === 'city') {
+        state.cities = state.cities.filter(c => c.id !== pendingDelete.id);
+        if (state.currentCityId === pendingDelete.id) {
+          state.currentCityId = state.cities[0]?.id || null;
+        }
+        save();
+        showToast('Città eliminata');
+      }
+      pendingDelete = null;
+      closeModals();
+      render();
+    };
+
+    // ============ GENERATOR ============
+    let currentGenBooking = null;
+
+    function openGenerator(id) {
+      const city = currentCity();
+      const r = city.restaurants.find(x => x.id === id);
+      if (!r) return;
+      currentGenBooking = r;
+
+      const dateStr = r.date ? formatDate(r.date) : '[data]';
+      const timeStr = r.time || '[orario]';
+      const people = r.people || 2;
+      let text = `Buonasera,\nvorrei prenotare un tavolo per ${people} ${people === 1 ? 'persona' : 'persone'} per il giorno ${dateStr} alle ore ${timeStr}.\n`;
+      if (r.notes) text += `\nNote: ${r.notes}\n`;
+      text += `\nGrazie mille!\nA presto.`;
+
+      document.getElementById('gen-text').textContent = text;
+      openModal('modal-generator');
+    }
+
+    document.getElementById('btn-copy-gen').onclick = async function() {
+      const text = document.getElementById('gen-text').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('Messaggio copiato! 📋');
+      } catch {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Messaggio copiato! 📋');
+      }
+    };
+
+    document.getElementById('btn-wa-gen').onclick = function() {
+      const text = document.getElementById('gen-text').textContent;
+      const phone = currentGenBooking?.phone?.replace(/\D/g, '') || '';
+      let url = 'https://wa.me/';
+      if (phone) url += phone;
+      url += '?text=' + encodeURIComponent(text);
+      window.open(url, '_blank');
+    };
+
+    // ============ CITIES ============
+    document.getElementById('btn-add-city').onclick = function() {
+      const name = document.getElementById('new-city-name').value.trim();
+      if (!name) {
+        showToast('Inserisci un nome', true);
+        return;
+      }
+      const id = uid();
+      state.cities.push({ id, name, restaurants: [] });
+      state.currentCityId = id;
+      document.getElementById('new-city-name').value = '';
+      save();
+      closeModals();
+      render();
+      showToast(`Città "${name}" in alto, toccala per selezionarla`);
+    };
+
+    document.getElementById('new-city-name').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-add-city').click();
+      }
+    });
+
+    function renameCity(id) {
+      const city = state.cities.find(c => c.id === id);
+      if (!city) return;
+      const newName = prompt('Nuovo nome città:', city.name);
+      if (newName && newName.trim()) {
+        city.name = newName.trim();
+        save();
+        renderCityList();
+        render();
+        showToast('Nome aggiornato');
+      }
+    }
+
+    // ============ WHATSAPP ============
+    function formatDate(iso) {
+      if (!iso) return 'da definire';
+      const p = iso.split('-');
+      return p[2] + '/' + p[1] + '/' + p[0];
+    }
+
+    function buildListText() {
+      const payload = { cities: state.cities, currentCityId: state.currentCityId };
+      const packed = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      return 'https://istintanimale-web.github.io/APP-PRENOTAZIONI/#d=' + packed;
+    }
+
+    function makeJpeg() {
+      const city = currentCity();
+      if (!city) {
+        showToast('Nessuna città selezionata', true);
+        return;
+      }
+      const sorted = [...(city.restaurants || [])].sort((a, b) => {
+        const aHas = !!a.date, bHas = !!b.date;
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        if (!aHas && !bHas) return (a.name || '').localeCompare(b.name || '', 'it');
+        return ((a.date || '') + ' ' + (a.time || '99:99')).localeCompare((b.date || '') + ' ' + (b.time || '99:99'));
+      });
+
+      const W = 720;
+      const pad = 28;
+      const lineH = 36;
+      const cardH = 110;
+      const headerH = 90;
+      const emptyH = sorted.length ? 0 : 80;
+      const H = headerH + (sorted.length ? sorted.length * cardH : emptyH) + pad * 2 + 40;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = Math.max(H, 200);
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#0f0f1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#e94560';
+      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillText('🍝 ' + city.name, pad, 48);
+
+      ctx.fillStyle = '#a0a0b8';
+      ctx.font = '18px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillText(sorted.length + ' prenotazioni', pad, 78);
+
+      if (!sorted.length) {
+        ctx.fillStyle = '#a0a0b8';
+        ctx.font = '22px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('Nessuna prenotazione', pad, headerH + 40);
+      } else {
+        sorted.forEach((r, i) => {
+          const y = headerH + i * cardH;
+          ctx.fillStyle = '#1a1a2e';
+          roundRect(ctx, pad, y, W - pad * 2, cardH - 12, 14);
+          ctx.fill();
+
+          ctx.fillStyle = '#eee';
+          ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillText(r.name || 'Senza nome', pad + 16, y + 34);
+
+          const ok = r.status === 'prenotato';
+          ctx.fillStyle = ok ? '#2ecc71' : '#f39c12';
+          ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+          const st = ok ? 'PRENOTATO' : 'DA PRENOTARE';
+          ctx.fillText(st, W - pad - 16 - ctx.measureText(st).width, y + 32);
+
+          ctx.fillStyle = '#a0a0b8';
+          ctx.font = '18px -apple-system, BlinkMacSystemFont, sans-serif';
+          const dateStr = r.date ? formatDate(r.date) : 'data da definire';
+          const timeStr = r.time || 'orario da definire';
+          ctx.fillText('📅 ' + dateStr + '   🕐 ' + timeStr + '   👥 ' + (r.people || 2), pad + 16, y + 64);
+
+          if (r.notes) {
+            ctx.fillStyle = '#888';
+            ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+            const note = r.notes.length > 50 ? r.notes.slice(0, 50) + '…' : r.notes;
+            ctx.fillText(note, pad + 16, y + 90);
+          }
+        });
+      }
+
+      canvas.toBlob(async function(blob) {
+        if (!blob) {
+          showToast('Errore JPEG', true);
+          return;
+        }
+        const file = new File([blob], (city.name || 'lista') + '.jpg', { type: 'image/jpeg' });
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: city.name });
+            showToast('Scegli WhatsApp');
+            return;
+          }
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+        }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (city.name || 'lista') + '.jpg';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast('JPEG salvato');
+      }, 'image/jpeg', 0.92);
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    const PHONE_KEY = 'prenotazioni_whatsapp_dest';
+
+    function normalizePhone(raw) {
+      let n = String(raw || '').replace(/\D/g, '');
+      if (!n) return '';
+      if (n.startsWith('00')) n = n.slice(2);
+      if (n.length === 10 && n.startsWith('3')) n = '39' + n;
+      if (n.length === 9 && n.startsWith('3')) n = '39' + n;
+      return n;
+    }
+
+    function getPartnerPhone() {
+      return localStorage.getItem(PHONE_KEY) || '';
+    }
+
+    function setPartnerPhone(raw) {
+      const n = normalizePhone(raw);
+      if (!n) return '';
+      localStorage.setItem(PHONE_KEY, n);
+      return n;
+    }
+
+    function sendToPartner() {
+      const phone = getPartnerPhone();
+      if (!phone) {
+        openModal('modal-cities');
+        showToast('Prima salva il suo numero', true);
+        return;
+      }
+      const text = buildListText();
+      window.location.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
+    }
+
+    document.getElementById('btn-whatsapp').onclick = sendToPartner;
+    document.getElementById('btn-jpeg').onclick = makeJpeg;
+
+    document.getElementById('btn-save-phone').onclick = function() {
+      const n = setPartnerPhone(document.getElementById('partner-phone').value);
+      if (!n) {
+        showToast('Numero non valido', true);
+        return;
+      }
+      document.getElementById('partner-phone').value = n;
+      showToast('Numero salvato');
+    };
+
+    document.getElementById('fab-add').onclick = openAddBooking;
+    document.getElementById('btn-manage-cities').onclick = () => openModal('modal-cities');
+
+    document.querySelectorAll('[data-close]').forEach(btn => {
+      btn.onclick = closeModals;
+    });
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) closeModals();
+      });
+    });
+
+    load();
+    render();
+  </script>
+</body>
+</html>
