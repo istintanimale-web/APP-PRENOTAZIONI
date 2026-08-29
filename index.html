@@ -1222,6 +1222,25 @@
       window.location.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(finalUrl);
     }
 
+    async function copyShortLink() {
+      const longUrl = buildListText();
+      showToast('Preparo il link…');
+      const shortUrl = await shortenUrl(longUrl);
+      const finalUrl = shortUrl || longUrl;
+      try {
+        await navigator.clipboard.writeText(finalUrl);
+        showToast(shortUrl ? 'Link corto copiato! 📋' : 'Link lungo copiato (accorciatore non disponibile)', !shortUrl);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = finalUrl;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(shortUrl ? 'Link corto copiato! 📋' : 'Link lungo copiato (accorciatore non disponibile)', !shortUrl);
+      }
+    }
+
     function downloadNetlifyFolder() {
       const payload = Object.assign({}, state, { savedAt: Date.now() });
       const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace(
@@ -1242,7 +1261,7 @@
 
     document.getElementById('btn-whatsapp').onclick = sendToPartner;
     document.getElementById('btn-jpeg').onclick = makeJpeg;
-    document.getElementById('btn-netlify').onclick = downloadNetlifyFolder;
+    document.getElementById('btn-netlify').onclick = copyShortLink;
 
     document.getElementById('btn-save-phone').onclick = function() {
       const n = setPartnerPhone(document.getElementById('partner-phone').value);
