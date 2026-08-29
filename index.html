@@ -452,7 +452,7 @@
   <div id="app">
     <header>
       <div class="header-top">
-        <h1>🍝 <span>Prenotazioni</span> <small style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">v14</small></h1>
+        <h1>🍝 <span>Prenotazioni</span> <small style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">v15</small></h1>
         <button class="btn-icon" id="btn-manage-cities" title="Gestisci città">⚙️</button>
       </div>
       <div class="city-bar" id="city-bar"></div>
@@ -1185,29 +1185,61 @@
       return n;
     }
 
-    // Prova ad accorciare il link con un servizio gratuito senza bisogno di server.
-    // Se nessuno dei due risponde in tempo, restituisce null e si usa il link lungo come prima.
+    // Prova più servizi di accorciamento IN PARALLELO (non uno dopo l'altro) e usa il primo
+    // che risponde con successo, entro un tetto massimo di 6 secondi totali.
+    // Se dal dominio GitHub Pages un servizio blocca le chiamate dirette dal browser (CORS),
+    // gli altri hanno comunque una possibilità.
+    function firstSuccessful(promiseFactories, overallTimeoutMs) {
+      return new Promise((resolve) => {
+        let settled = 0;
+        let done = false;
+        const finish = (val) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(val);
+        };
+        const timer = setTimeout(() => finish(null), overallTimeoutMs);
+        promiseFactories.forEach((pf) => {
+          Promise.resolve().then(pf).then((val) => {
+            if (val) finish(val);
+          }).catch(() => {}).finally(() => {
+            settled++;
+            if (settled === promiseFactories.length) finish(null);
+          });
+        });
+      });
+    }
+
+    async function tryTextService(base, longUrl) {
+      const r = await fetch(base + encodeURIComponent(longUrl));
+      if (!r.ok) throw new Error('bad response');
+      const txt = (await r.text()).trim();
+      if (!txt.startsWith('http')) throw new Error('bad body');
+      return txt;
+    }
+
+    async function tryUlvis(longUrl) {
+      const r = await fetch('https://ulvis.net/api/v1/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: longUrl })
+      });
+      if (!r.ok) throw new Error('bad response');
+      const data = await r.json();
+      const short = (data && (data.short || data.url ||
+        (data.data && (data.data.short || (data.data.url && data.data.url.short))))) || null;
+      if (!short || typeof short !== 'string' || !short.startsWith('http')) throw new Error('no short url');
+      return short;
+    }
+
     async function shortenUrl(longUrl) {
-      const withTimeout = (p, ms) => Promise.race([
-        p,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
-      ]);
-      const tryService = async (base) => {
-        const r = await withTimeout(fetch(base + encodeURIComponent(longUrl)), 4000);
-        if (!r.ok) throw new Error('bad response');
-        const txt = (await r.text()).trim();
-        if (!txt.startsWith('http')) throw new Error('bad body');
-        return txt;
-      };
-      try {
-        return await tryService('https://is.gd/create.php?format=simple&url=');
-      } catch (e) {
-        try {
-          return await tryService('https://v.gd/create.php?format=simple&url=');
-        } catch (e2) {
-          return null;
-        }
-      }
+      return firstSuccessful([
+        () => tryTextService('https://tinyurl.com/api-create.php?url=', longUrl),
+        () => tryTextService('https://is.gd/create.php?format=simple&url=', longUrl),
+        () => tryTextService('https://v.gd/create.php?format=simple&url=', longUrl),
+        () => tryUlvis(longUrl)
+      ], 6000);
     }
 
     async function sendToPartner() {
