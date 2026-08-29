@@ -449,7 +449,7 @@
   <div id="app">
     <header>
       <div class="header-top">
-        <h1>🍝 <span>Prenotazioni</span> <small style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">v12</small></h1>
+        <h1>🍝 <span>Prenotazioni</span> <small style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">v13</small></h1>
         <button class="btn-icon" id="btn-manage-cities" title="Gestisci città">⚙️</button>
       </div>
       <div class="city-bar" id="city-bar"></div>
@@ -464,6 +464,7 @@
 
     <div class="toolbar">
       <button class="btn btn-secondary" id="btn-jpeg">📸 JPEG</button>
+      <button class="btn btn-secondary" id="btn-netlify">🔗 Link corto</button>
       <button class="btn btn-primary" id="btn-whatsapp">💬 Invia</button>
     </div>
   </div>
@@ -1181,19 +1182,67 @@
       return n;
     }
 
-    function sendToPartner() {
+    // Prova ad accorciare il link con un servizio gratuito senza bisogno di server.
+    // Se nessuno dei due risponde in tempo, restituisce null e si usa il link lungo come prima.
+    async function shortenUrl(longUrl) {
+      const withTimeout = (p, ms) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+      ]);
+      const tryService = async (base) => {
+        const r = await withTimeout(fetch(base + encodeURIComponent(longUrl)), 4000);
+        if (!r.ok) throw new Error('bad response');
+        const txt = (await r.text()).trim();
+        if (!txt.startsWith('http')) throw new Error('bad body');
+        return txt;
+      };
+      try {
+        return await tryService('https://is.gd/create.php?format=simple&url=');
+      } catch (e) {
+        try {
+          return await tryService('https://v.gd/create.php?format=simple&url=');
+        } catch (e2) {
+          return null;
+        }
+      }
+    }
+
+    async function sendToPartner() {
       const phone = getPartnerPhone();
       if (!phone) {
         openModal('modal-cities');
         showToast('Prima salva il suo numero', true);
         return;
       }
-      const text = buildListText();
-      window.location.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
+      const longUrl = buildListText();
+      showToast('Preparo il link…');
+      const shortUrl = await shortenUrl(longUrl);
+      const finalUrl = shortUrl || longUrl;
+      if (!shortUrl) showToast('Link corto non disponibile, invio quello lungo', true);
+      window.location.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(finalUrl);
+    }
+
+    function downloadNetlifyFolder() {
+      const payload = Object.assign({}, state, { savedAt: Date.now() });
+      const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace(
+        /\/\*EMBED_START\*\/[\s\S]*?\/\*EMBED_END\*\//,
+        '/*EMBED_START*/var EMBEDDED = ' + JSON.stringify(payload) + ';/*EMBED_END*/'
+      );
+      const blob = new Blob([html], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'index.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('File scaricato. Trascinalo su app.netlify.com/drop');
+      setTimeout(() => {
+        window.open('https://app.netlify.com/drop', '_blank');
+      }, 400);
     }
 
     document.getElementById('btn-whatsapp').onclick = sendToPartner;
     document.getElementById('btn-jpeg').onclick = makeJpeg;
+    document.getElementById('btn-netlify').onclick = downloadNetlifyFolder;
 
     document.getElementById('btn-save-phone').onclick = function() {
       const n = setPartnerPhone(document.getElementById('partner-phone').value);
